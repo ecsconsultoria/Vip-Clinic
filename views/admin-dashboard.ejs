@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>Dashboard - <%= company.name %> Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin-mobile.css">
+  <script>
+    // Garantir que todos os modais comecem fechados
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Iniciando página - fechando todos os modais');
+      const modals = document.querySelectorAll('.modal');
+      modals.forEach(modal => {
+        modal.style.display = 'none';
+        console.log('Modal fechado:', modal.id);
+      });
+    });
+  </script>
+</head>
+<body>
+  <div class="admin-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1><%= company.name %></h1>
+        <p>Admin</p>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <a href="/admin/dashboard" class="nav-item active">📊 Dashboard</a>
+        <a href="/admin/relatorio" class="nav-item">📈 Relatório</a>
+        <button type="button" class="nav-item" onclick="openAvailabilityModal(event)">🕐 Gerenciar Horários</button>
+        <button type="button" class="nav-item" onclick="openCapacityModal(event)">🎯 Gerenciar Vagas</button>
+        <button type="button" class="nav-item" onclick="openProfessionalsModal(event)">👤 Profissionais</button>
+        <button type="button" class="nav-item" onclick="openPasswordModal(event)">🔒 Alterar Senha</button>
+        <button type="button" class="nav-item" onclick="generateLink(event)">🔗 Gerar Link</button>
+        <a href="/admin/login" class="nav-item">🚪 Sair</a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+      <div class="admin-header">
+        <h1>Dashboard de Agendamentos</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <p style="margin: 0;">Visualize e gerencie todos os agendamentos</p>
+          <a href="/admin/export-excel?password=<%= typeof adminPassword !== 'undefined' ? adminPassword : '' %>" 
+             class="btn btn-success" 
+             style="background: #28a745; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;">
+            📊 Exportar Excel
+          </a>
+        </div>
+      </div>
+
+      <!-- Estatísticas -->
+      <div class="stats-grid">
+        <div class="stat-card total-entrada">
+          <div class="stat-number">R$ <%= stats.totalEntrada %></div>
+          <div class="stat-label">Total Entrada</div>
+        </div>
+        <div class="stat-card" onclick="filterByStatus('all')" style="cursor: pointer;" title="Clique para mostrar todos">
+          <div class="stat-number"><%= stats.total %></div>
+          <div class="stat-label">Total de Agendamentos</div>
+        </div>
+        <div class="stat-card confirmed" onclick="filterByStatus('confirmed')" style="cursor: pointer;" title="Clique para filtrar Agendados">
+          <div class="stat-number"><%= stats.confirmed %></div>
+          <div class="stat-label">Agendados</div>
+        </div>
+        <div class="stat-card initiated" onclick="filterByStatus('initiated')" style="cursor: pointer;" title="Clique para filtrar Iniciados">
+          <div class="stat-number"><%= stats.initiated %></div>
+          <div class="stat-label">Iniciados</div>
+        </div>
+        <div class="stat-card completed" onclick="filterByStatus('completed')" style="cursor: pointer;" title="Clique para filtrar Finalizados">
+          <div class="stat-number"><%= stats.completed %></div>
+          <div class="stat-label">Finalizados</div>
+        </div>
+        <div class="stat-card cancelled" onclick="filterByStatus('cancelled')" style="cursor: pointer;" title="Clique para filtrar Cancelados">
+          <div class="stat-number"><%= stats.cancelled %></div>
+          <div class="stat-label">Cancelados</div>
+        </div>
+      </div>
+
+      <!-- Legenda de Status -->
+      <div style="background: #f5f5f5; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; align-items: center; border-left: 4px solid var(--primary-color);">
+        <div style="font-weight: 600; color: var(--text-color); font-size: 0.9em;">📖 Legenda:</div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span class="status-badge confirmed" style="min-width: 28px; text-align: center;">A</span>
+          <span style="font-size: 0.85em; color: var(--text-light);">Agendado</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span class="status-badge initiated" style="min-width: 28px; text-align: center;">I</span>
+          <span style="font-size: 0.85em; color: var(--text-light);">Iniciado</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span class="status-badge cancelled" style="min-width: 28px; text-align: center;">C</span>
+          <span style="font-size: 0.85em; color: var(--text-light);">Cancelado</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span class="status-badge completed" style="min-width: 28px; text-align: center;">F</span>
+          <span style="font-size: 0.85em; color: var(--text-light);">Finalizado</span>
+        </div>
+      </div>
+
+      <!-- Tabela de Agendamentos -->
+      <div class="appointments-section">
+        <h2>Próximos Agendamentos</h2>
+        
+        <%
+          // Função para formatar status
+          function formatStatus(status) {
+            const statuses = {
+              'confirmed': 'A',
+              'initiated': 'I',
+              'completed': 'F',
+              'cancelled': 'C'
+            };
+            return statuses[status] || status;
+          }
+          
+          // Função para formatar nome do serviço
+          function formatServiceName(service) {
+            const names = {
+              'manicure': 'Manicure',
+              'pedicure': 'Pedicure',
+              'cilios': 'Cílios',
+              'combo_mani_pedi': 'Manicure + Pedicure',
+              'combo_completo': 'Manicure + Pedicure + Cílios'
+            };
+            return names[service] || service;
+          }
+        %>
+        
+        <% if (appointments.length > 0) { %>
+          <div class="table-responsive">
+            <table class="appointments-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Horário</th>
+                  <th>Cliente</th>
+                  <th>Serviço</th>
+                  <th>Valor</th>
+                  <th>Telefone</th>
+                  <th>Profissional</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                  <th>Resumo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% appointments.forEach(apt => { %>
+                  <% 
+                    const [year, month, day] = apt.appointment_date.split('-');
+                    const formattedDate = `${day}/${month}/${year}`;
+                  %>
+                  <tr class="appointment-row <%= apt.status %>">
+                    <td><%= formattedDate %></td>
+                    <td><%= apt.appointment_time %></td>
+                    <td><%= apt.client_name %></td>
+                    <td><%= formatServiceName(apt.service) %></td>
+                    <td class="service-price"><strong>R$ <%= (apt.service_price || 0).toFixed(2) %></strong></td>
+                    <td>
+                      <a href="https://wa.me/55<%= apt.client_phone.replace(/\D/g, '') %>" target="_blank">
+                        <%= apt.client_phone %>
+                      </a>
+                    </td>
+                    <td>
+                      <% if (apt.status === 'confirmed') { %>
+                        <span id="prof-<%= apt.id %>" data-prof-id="<%= apt.professional_id || '' %>" data-prof-name="<%= apt.professional_name || '' %>">-</span>
+                      <% } else { %>
+                        <span style="color: #666; font-size: 0.9em;"><%= apt.professional_name || '-' %></span>
+                      <% } %>
+                    </td>
+                    <td class="status-cell">
+                      <span class="status-badge <%= apt.status %>">
+                        <%= formatStatus(apt.status) %>
+                      </span>
+                    </td>
+                    <td class="actions">
+                      <% if (apt.status === 'confirmed') { %>
+                        <select class="status-select" style="font-size: 0.85em; padding: 4px 6px;" onchange="updateStatus('<%= apt.id %>', this.value, '<%= apt.professional_id || '' %>'); this.value = '<%= apt.status %>'">
+                          <option value="">✏️ Alterar Status</option>
+                          <option value="initiated">I - Iniciado</option>
+                          <option value="completed">F - Finalizado</option>
+                          <option value="cancelled">C - Cancelado</option>
+                        </select>
+                      <% } else if (apt.status === 'initiated') { %>
+                        <select class="status-select" style="font-size: 0.85em; padding: 4px 6px;" onchange="updateStatus('<%= apt.id %>', this.value, '<%= apt.professional_id || '' %>'); this.value = '<%= apt.status %>'">
+                          <option value="">✏️ Alterar Status</option>
+                          <option value="completed">F - Finalizado</option>
+                          <option value="cancelled">C - Cancelado</option>
+                        </select>
+                      <% } else { %>
+                        <span style="color: #999; font-size: 0.85em;">-</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <button class="btn-small btn-info" onclick="showDetailsModal({id: '<%= apt.id %>', email: `<%= apt.client_email || '' %>`, notes: `<%= apt.notes || '' %>`, name: `<%= apt.client_name %>`})">ℹ️ Detalhes</button>
+                    </td>
+                  </tr>
+                <% }); %>
+              </tbody>
+            </table>
+          </div>
+        <% } else { %>
+          <p class="no-data">Nenhum agendamento futuro.</p>
+        <% } %>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal para Gerenciar Horários -->
+  <div id="availabilityModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeAvailabilityModal()">&times;</span>
+      <h2>🕐 Gerenciar Horários e Datas</h2>
+      
+      <div class="availability-controls">
+        <h3>Bloquear Horário Específico</h3>
+        <div class="form-group">
+          <label>Data:</label>
+          <input type="date" id="unavailDate" required>
+        </div>
+        <div class="form-group">
+          <label>Horário:</label>
+          <select id="unavailTime" required>
+            <option value="">Selecione</option>
+            <option value="09:00">09:00 - 10:00</option>
+            <option value="10:00">10:00 - 11:00</option>
+            <option value="11:00">11:00 - 12:00</option>
+            <option value="12:00">12:00 - 13:00</option>
+            <option value="13:00">13:00 - 14:00</option>
+            <option value="14:00">14:00 - 15:00</option>
+            <option value="15:00">15:00 - 16:00</option>
+            <option value="16:00">16:00 - 17:00</option>
+            <option value="17:00">17:00 - 18:00</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Motivo (opcional):</label>
+          <input type="text" id="unavailReason" placeholder="Ex: Manutenção, Feriado, etc">
+        </div>
+        <button onclick="blockTimeSlot()" class="btn btn-primary">🔒 Bloquear Horário</button>
+      </div>
+
+      <hr style="margin: 20px 0;">
+
+      <div class="availability-controls">
+        <h3>Bloquear Data Inteira</h3>
+        <div class="form-group">
+          <label>Data:</label>
+          <input type="date" id="unavailFullDate" required>
+        </div>
+        <div class="form-group">
+          <label>Motivo:</label>
+          <input type="text" id="unavailFullReason" placeholder="Ex: Fechado, Feriado, Evento">
+        </div>
+        <button onclick="blockFullDate()" class="btn btn-danger">🚫 Bloquear Data Inteira</button>
+      </div>
+
+      <hr style="margin: 20px 0;">
+
+      <div class="unavailable-list">
+        <h3>Horários/Datas Bloqueadas</h3>
+        <div id="unavailableSlotsList" class="slots-list">
+          <p>Carregando...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para Link -->
+  <div id="linkModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeLinkModal()">&times;</span>
+      <h2>Link de Agendamento</h2>
+      <p>Compartilhe este link com seus clientes:</p>
+      
+      <div class="link-box">
+        <input type="text" id="bookingLink" readonly>
+        <button onclick="copyLink()" class="btn btn-small">📋 Copiar</button>
+      </div>
+
+      <div class="link-box">
+        <label>Ou compartilhe direto no WhatsApp:</label>
+        <a id="whatsappLink" href="#" target="_blank" class="btn btn-primary">
+          💬 Abrir WhatsApp
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para Detalhes do Agendamento -->
+  <div id="detailsModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeDetailsModal()">&times;</span>
+      <h2>📋 Detalhes do Agendamento</h2>
+      
+      <div class="details-content">
+        <div class="detail-row">
+          <strong>👤 Cliente:</strong>
+          <span id="detailName"></span>
+        </div>
+        <div class="detail-row">
+          <strong>📧 Email:</strong>
+          <span id="detailEmail"></span>
+        </div>
+        <div class="detail-row">
+          <strong>📱 Telefone:</strong>
+          <span id="detailPhone"></span>
+        </div>
+        <div class="detail-row">
+          <strong>💅 Serviço:</strong>
+          <span id="detailService"></span>
+        </div>
+        <div class="detail-row">
+          <strong>📅 Data:</strong>
+          <span id="detailDate"></span>
+        </div>
+        <div class="detail-row">
+          <strong>🕐 Hora:</strong>
+          <span id="detailTime"></span>
+        </div>
+        <div class="detail-row">
+          <strong>💰 Valor:</strong>
+          <span id="detailPrice"></span>
+        </div>
+        <div class="detail-row">
+          <strong>📝 Observações:</strong>
+          <span id="detailNotes"></span>
+        </div>
+        <div class="detail-row">
+          <strong>Status:</strong>
+          <span id="detailStatus"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para Alterar Senha -->
+  <div id="passwordModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closePasswordModal()">&times;</span>
+      <h2>🔒 Alterar Senha do Administrador</h2>
+      <p class="modal-description">Altere a senha de acesso ao painel administrativo</p>
+      
+      <form id="passwordForm" onsubmit="changePassword(event)">
+        <div class="form-group">
+          <label>🔐 Senha Atual:</label>
+          <input type="password" id="currentPassword" required minlength="6" placeholder="Digite a senha atual">
+        </div>
+        
+        <div class="form-group">
+          <label>🔑 Nova Senha:</label>
+          <input type="password" id="newPassword" required minlength="6" placeholder="Mínimo 6 caracteres">
+        </div>
+        
+        <div class="form-group">
+          <label>✅ Confirmar Nova Senha:</label>
+          <input type="password" id="confirmPassword" required minlength="6" placeholder="Digite novamente a nova senha">
+        </div>
+        
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">💾 Alterar Senha</button>
+          <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">❌ Cancelar</button>
+        </div>
+      </form>
+      
+      <div id="passwordMessage" style="margin-top: 15px; padding: 10px; border-radius: 5px; display: none;"></div>
+    </div>
+  </div>
+
+  <!-- Modal para Gerenciar Capacidade de Vagas -->
+  <div id="capacityModal" class="modal">
+    <div class="modal-content capacity-modal">
+      <span class="close" onclick="closeCapacityModal()">&times;</span>
+      <h2>🎯 Gerenciar Vagas por Horário e Serviço</h2>
+      <p class="modal-description">Configure quantas vagas estarão disponíveis para cada serviço em cada horário</p>
+      
+      <div class="capacity-controls">
+        <h3>📋 Configurar Vagas</h3>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>💅 Serviço:</label>
+            <select id="capacityService" required>
+              <option value="">Selecione o serviço</option>
+              <option value="manicure">Manicure</option>
+              <option value="pedicure">Pedicure</option>
+              <option value="cilios">Cílios</option>
+              <option value="combo_mani_pedi">Manicure + Pedicure</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>🕐 Horário:</label>
+            <select id="capacityTime" required>
+              <option value="">Selecione o horário</option>
+              <option value="09:00">09:00 - 10:00</option>
+              <option value="10:00">10:00 - 11:00</option>
+              <option value="11:00">11:00 - 12:00</option>
+              <option value="12:00">12:00 - 13:00</option>
+              <option value="13:00">13:00 - 14:00</option>
+              <option value="14:00">14:00 - 15:00</option>
+              <option value="15:00">15:00 - 16:00</option>
+              <option value="16:00">16:00 - 17:00</option>
+              <option value="17:00">17:00 - 18:00</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>🎯 Quantidade de Vagas:</label>
+            <input type="number" id="capacitySlots" min="0" max="20" value="1" required>
+            <small>Número de atendimentos simultâneos permitidos</small>
+          </div>
+        </div>
+
+        <div class="capacity-actions">
+          <button onclick="setCapacity()" class="btn btn-primary">💾 Salvar Configuração</button>
+          <button onclick="setCapacityForAllTimes()" class="btn btn-secondary">⚡ Aplicar para Todos os Horários</button>
+        </div>
+      </div>
+
+      <hr style="margin: 30px 0;">
+
+      <div class="capacity-list-section">
+        <h3>📊 Configurações Atuais</h3>
+        <div class="capacity-filters">
+          <select id="filterService" onchange="loadCapacityList()">
+            <option value="">Todos os Serviços</option>
+            <option value="manicure">Manicure</option>
+            <option value="pedicure">Pedicure</option>
+            <option value="cilios">Cílios</option>
+            <option value="combo_mani_pedi">Manicure + Pedicure</option>
+          </select>
+        </div>
+        <div id="capacityList" class="capacity-list">
+          <p>Carregando configurações...</p>
+        </div>
+      </div>
+
+      <div class="capacity-info">
+        <h4>ℹ️ Como Funciona</h4>
+        <ul>
+          <li><strong>Padrão:</strong> 1 vaga por horário (quando não configurado)</li>
+          <li><strong>Exemplo:</strong> Se configurar 3 vagas para Manicure às 14h, até 3 clientes poderão agendar manicure neste horário</li>
+          <li><strong>Controle total:</strong> Configure diferentes quantidades para cada combinação de serviço e horário</li>
+          <li><strong>0 vagas:</strong> Bloqueia completamente o serviço naquele horário</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/admin.js"></script>
+  <script>
+    function formatServiceName(service) {
+      const names = {
+        'manicure': 'Manicure',
+        'pedicure': 'Pedicure',
+        'cilios': 'Cílios',
+        'combo_mani_pedi': 'Manicure + Pedicure',
+        'combo_completo': 'Manicure + Pedicure + Cílios'
+      };
+      return names[service] || service;
+    }
+
+    function formatStatus(status) {
+      const statuses = {
+        'confirmed': 'A',
+        'completed': 'F',
+        'cancelled': 'C'
+      };
+      return statuses[status] || status;
+    }
+
+    function generateLink(e) {
+      e.preventDefault();
+      fetch('/admin/generate-link')
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('bookingLink').value = data.link;
+          document.getElementById('whatsappLink').href = data.whatsapp;
+          document.getElementById('linkModal').style.display = 'block';
+        })
+        .catch(err => {
+          alert('❌ Erro ao gerar link. Tente novamente.');
+          console.error(err);
+        });
+    }
+
+    function closeLinkModal() {
+      document.getElementById('linkModal').style.display = 'none';
+    }
+
+    function openAvailabilityModal(e) {
+      e.preventDefault();
+      document.getElementById('availabilityModal').style.display = 'block';
+      loadUnavailableSlots();
+    }
+
+    function closeAvailabilityModal() {
+      document.getElementById('availabilityModal').style.display = 'none';
+    }
+
+    // ========== FUNÇÕES DE GERENCIAMENTO DE CAPACIDADE ==========
+
+    function openCapacityModal(e) {
+      e.preventDefault();
+      document.getElementById('capacityModal').style.display = 'block';
+      loadCapacityList();
+    }
+
+    function closeCapacityModal() {
+      document.getElementById('capacityModal').style.display = 'none';
+    }
+
+    function setCapacity() {
+      const service = document.getElementById('capacityService').value;
+      const time = document.getElementById('capacityTime').value;
+      const capacity = document.getElementById('capacitySlots').value;
+
+      if (!service || !time || capacity === '') {
+        alert('⚠️ Preencha todos os campos!');
+        return;
+      }
+
+      const capacityNum = parseInt(capacity);
+      if (capacityNum < 0) {
+        alert('⚠️ Capacidade não pode ser negativa!');
+        return;
+      }
+
+      fetch('/admin/api/service-capacity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          service_name: service, 
+          time_slot: time, 
+          capacity: capacityNum 
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(`✅ ${data.message}`);
+          // Limpar campos
+          document.getElementById('capacityService').value = '';
+          document.getElementById('capacityTime').value = '';
+          document.getElementById('capacitySlots').value = 1;
+          loadCapacityList();
+        } else {
+          alert('❌ Erro ao salvar configuração');
+        }
+      })
+      .catch(err => {
+        console.error('Erro:', err);
+        alert('❌ Erro ao salvar configuração');
+      });
+    }
+
+    function setCapacityForAllTimes() {
+      const service = document.getElementById('capacityService').value;
+      const capacity = document.getElementById('capacitySlots').value;
+
+      if (!service || capacity === '') {
+        alert('⚠️ Selecione o serviço e defina a capacidade!');
+        return;
+      }
+
+      if (!confirm(`Aplicar ${capacity} vagas para ${formatServiceName(service)} em TODOS os horários?`)) {
+        return;
+      }
+
+      const allTimes = ['10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+
+      fetch('/admin/api/service-capacity/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          service_name: service, 
+          time_slots: allTimes, 
+          capacity: parseInt(capacity) 
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(`✅ ${data.message}`);
+          loadCapacityList();
+        } else {
+          alert('❌ Erro ao aplicar configuração em lote');
+        }
+      })
+      .catch(err => {
+        console.error('Erro:', err);
+        alert('❌ Erro ao aplicar configuração');
+      });
+    }
+
+    function loadCapacityList() {
+      const filterService = document.getElementById('filterService')?.value || '';
+      
+      fetch('/admin/api/service-capacity')
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          }
+          return res.json();
+        })
+        .then(data => {
+          const list = document.getElementById('capacityList');
+          
+          if (!data || data.length === 0) {
+            list.innerHTML = '<p class="no-data">Nenhuma configuração personalizada. Usando padrão: 1 vaga por horário.</p>';
+            return;
+          }
+
+          // Filtrar por serviço se selecionado
+          let filtered = data;
+          if (filterService) {
+            filtered = data.filter(c => c.service_name === filterService);
+          }
+
+          if (filtered.length === 0) {
+            list.innerHTML = '<p class="no-data">Nenhuma configuração para este serviço.</p>';
+            return;
+          }
+
+          // Agrupar por serviço
+          const grouped = {};
+          filtered.forEach(item => {
+            if (!grouped[item.service_name]) {
+              grouped[item.service_name] = [];
+            }
+            grouped[item.service_name].push(item);
+          });
+
+          let html = '';
+          for (const [serviceName, configs] of Object.entries(grouped)) {
+            html += `
+              <div class="capacity-service-group">
+                <h4>💅 ${formatServiceName(serviceName)}</h4>
+                <div class="capacity-items">
+            `;
+            
+            configs.forEach(config => {
+              const statusClass = config.capacity === 0 ? 'blocked' : (config.capacity >= 3 ? 'high' : 'normal');
+              const statusText = config.capacity === 0 ? '🚫 Bloqueado' : `✅ ${config.capacity} vaga${config.capacity > 1 ? 's' : ''}`;
+              
+              html += `
+                <div class="capacity-item ${statusClass}">
+                  <div class="capacity-info">
+                    <strong>🕐 ${config.time_slot}</strong>
+                    <span class="capacity-badge">${statusText}</span>
+                  </div>
+                  <button class="btn-small btn-danger" onclick="removeCapacity(${config.id})">🗑️ Remover</button>
+                </div>
+              `;
+            });
+            
+            html += `
+                </div>
+              </div>
+            `;
+          }
+
+          list.innerHTML = html;
+        })
+        .catch(err => {
+          console.error('Erro ao carregar capacidades:', err);
+          document.getElementById('capacityList').innerHTML = `<p class="error">❌ Erro ao carregar configurações: ${err.message}<br><small>Verifique o console (F12) para mais detalhes</small></p>`;
+        });
+    }
+
+    function removeCapacity(id) {
+      if (!confirm('Remover esta configuração? O horário voltará ao padrão de 1 vaga.')) {
+        return;
+      }
+
+      fetch(`/admin/api/service-capacity/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('✅ Configuração removida!');
+          loadCapacityList();
+        }
+      })
+      .catch(err => {
+        console.error('Erro:', err);
+        alert('❌ Erro ao remover configuração');
+      });
+    }
+
+    // ========== FIM FUNÇÕES DE CAPACIDADE ==========
+
+
+    function loadUnavailableSlots() {
+      fetch('/admin/api/unavailable-slots')
+        .then(res => res.json())
+        .then(data => {
+          const list = document.getElementById('unavailableSlotsList');
+          if (data.length === 0) {
+            list.innerHTML = '<p>Nenhum horário bloqueado</p>';
+            return;
+          }
+          list.innerHTML = data.map(slot => `
+            <div class="unavail-item">
+              <div>
+                <strong>${new Date(slot.date + 'T00:00:00').toLocaleDateString('pt-BR')}</strong>
+                às <strong>${slot.time}</strong>
+                ${slot.reason ? `<br><small>${slot.reason}</small>` : ''}
+              </div>
+              <button class="btn-small btn-danger" onclick="unblockSlot(${slot.id})">🔓 Desbloquear</button>
+            </div>
+          `).join('');
+        });
+    }
+
+    function blockTimeSlot() {
+      const date = document.getElementById('unavailDate').value;
+      const time = document.getElementById('unavailTime').value;
+      const reason = document.getElementById('unavailReason').value;
+
+      if (!date || !time) {
+        alert('⚠️ Data e horário são obrigatórios!');
+        return;
+      }
+
+      fetch('/admin/api/unavailable-slots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, time, reason })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('✅ Horário bloqueado!');
+          document.getElementById('unavailDate').value = '';
+          document.getElementById('unavailTime').value = '';
+          document.getElementById('unavailReason').value = '';
+          loadUnavailableSlots();
+        }
+      });
+    }
+
+    function blockFullDate() {
+      const date = document.getElementById('unavailFullDate').value;
+      const reason = document.getElementById('unavailFullReason').value;
+
+      if (!date) {
+        alert('⚠️ Data é obrigatória!');
+        return;
+      }
+
+      fetch('/admin/api/unavailable-dates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, reason: reason || 'Data bloqueada' })
+      })
+      .then(res => {
+        if (!res.ok) {
+          return res.json().then(err => {
+            throw new Error(err.error || 'Erro ao bloquear data');
+          });
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (data.success) {
+          alert('✅ Data inteira bloqueada!');
+          document.getElementById('unavailFullDate').value = '';
+          document.getElementById('unavailFullReason').value = '';
+          loadUnavailableSlots();
+        }
+      })
+      .catch(error => {
+        console.error('Erro:', error);
+        alert('❌ Erro ao bloquear data: ' + error.message);
+      });
+    }
+
+    function unblockSlot(id) {
+      if (!confirm('Desbloquear este horário?')) return;
+
+      fetch(`/admin/api/unavailable-slots/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('✅ Horário desbloqueado!');
+          loadUnavailableSlots();
+        }
+      });
+    }
+
+    function closeLinkModal() {
+      document.getElementById('linkModal').style.display = 'none';
+    }
+
+    function closeDetailsModal() {
+      document.getElementById('detailsModal').style.display = 'none';
+    }
+
+    function copyLink() {
+      const linkInput = document.getElementById('bookingLink');
+      const link = linkInput.value;
+      
+      // Tentar usar API moderna
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link)
+          .then(() => {
+            alert('✅ Link copiado para a área de transferência!');
+          })
+          .catch(err => {
+            // Fallback para método antigo
+            linkInput.select();
+            linkInput.setSelectionRange(0, 99999);
+            try {
+              document.execCommand('copy');
+              alert('✅ Link copiado!');
+            } catch (e) {
+              alert('❌ Erro ao copiar. Copie manualmente: Ctrl+C');
+            }
+          });
+      } else {
+        // Método antigo para navegadores mais antigos
+        linkInput.select();
+        linkInput.setSelectionRange(0, 99999);
+        try {
+          document.execCommand('copy');
+          alert('✅ Link copiado!');
+        } catch (err) {
+          alert('❌ Erro ao copiar. Copie manualmente: Ctrl+C');
+        }
+      }
+    }
+
+    function updateStatus(id, status, professionalId) {
+      // Se está tentando iniciar, buscar o profissional atual do select (caso tenha sido alterado)
+      if (status === 'initiated') {
+        const profCell = document.getElementById(`prof-${id}`);
+        if (profCell) {
+          // Tentar pegar do atributo data-prof-id (atualizado quando seleciona)
+          const currentProfId = profCell.getAttribute('data-prof-id');
+          if (currentProfId) {
+            professionalId = currentProfId;
+          }
+        }
+      }
+      
+      // Validar se está tentando iniciar sem profissional
+      if (status === 'initiated' && !professionalId) {
+        alert('⚠️ Para iniciar o atendimento, você precisa selecionar um profissional primeiro!');
+        return;
+      }
+      
+      const confirmMsg = status === 'cancelled' 
+        ? '⚠️ Confirmar CANCELAMENTO do agendamento?'
+        : status === 'initiated'
+        ? 'Alterar status para INICIADO?'
+        : `Alterar status para ${status === 'completed' ? 'FINALIZADO' : status.toUpperCase()}?`;
+      
+      if (confirm(confirmMsg)) {
+        const endpoint = status === 'completed' ? 'complete' : 
+                        status === 'cancelled' ? 'cancel' : 
+                        status === 'initiated' ? 'initiate' : status;
+                        
+        fetch(`/admin/api/appointments/${id}/${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            location.reload();
+          } else {
+            alert('❌ ' + (data.error || 'Erro ao atualizar status'));
+          }
+        })
+        .catch(err => {
+          console.error('Erro:', err);
+          alert('❌ Erro ao atualizar status');
+        });
+      }
+    }
+
+    function showDetailsModal(apt) {
+      fetch(`/api/booking/${apt.id}`)
+        .then(res => res.json())
+        .then(data => {
+          const [year, month, day] = data.appointment_date.split('-');
+          const formattedDate = `${day}/${month}/${year}`;
+
+          document.getElementById('detailName').textContent = data.client_name || '-';
+          document.getElementById('detailEmail').textContent = data.client_email || 'Não informado';
+          document.getElementById('detailPhone').textContent = data.client_phone || '-';
+          document.getElementById('detailService').textContent = formatServiceName(data.service) || '-';
+          document.getElementById('detailDate').textContent = formattedDate || '-';
+          document.getElementById('detailTime').textContent = data.appointment_time || '-';
+          document.getElementById('detailPrice').textContent = `R$ ${(data.service_price || 0).toFixed(2)}` || '-';
+          document.getElementById('detailNotes').textContent = data.notes || 'Nenhuma observação';
+          document.getElementById('detailStatus').textContent = formatStatus(data.status) || '-';
+          
+          document.getElementById('detailsModal').style.display = 'block';
+        })
+        .catch(err => {
+          console.error('Erro ao carregar detalhes:', err);
+          alert('Erro ao carregar detalhes do agendamento');
+        });
+    }
+
+    function showDetails(id) {
+      alert('Detalhes do agendamento ID: ' + id);
+    }
+
+    // Expandir/Recolher detalhes por data
+    function toggleDateDetails(date) {
+      const detailsRow = document.getElementById('details-' + date);
+      if (detailsRow.style.display === 'none') {
+        detailsRow.style.display = 'table-row';
+      } else {
+        detailsRow.style.display = 'none';
+      }
+    }
+
+    // Fechar modal ao clicar fora
+    window.onclick = function(event) {
+      const modal = document.getElementById('linkModal');
+      if (event.target === modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    // Fechar modais com tecla ESC
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        // Verificar qual modal está aberto e fechar
+        const modals = ['linkModal', 'availabilityModal', 'capacityModal', 'passwordModal', 'detailsModal'];
+        modals.forEach(modalId => {
+          const modal = document.getElementById(modalId);
+          if (modal && modal.style.display === 'block') {
+            modal.style.display = 'none';
+          }
+        });
+      }
+    });
+
+    // Funções para modal de senha
+    function openPasswordModal(e) {
+      if (e) e.preventDefault();
+      document.getElementById('passwordModal').style.display = 'block';
+      document.getElementById('passwordForm').reset();
+      document.getElementById('passwordMessage').style.display = 'none';
+    }
+
+    function closePasswordModal() {
+      document.getElementById('passwordModal').style.display = 'none';
+      document.getElementById('passwordForm').reset();
+      document.getElementById('passwordMessage').style.display = 'none';
+    }
+
+    async function changePassword(e) {
+      e.preventDefault();
+      
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      const messageDiv = document.getElementById('passwordMessage');
+      
+      // Validar no frontend
+      if (newPassword !== confirmPassword) {
+        messageDiv.textContent = '❌ A nova senha e a confirmação não coincidem';
+        messageDiv.style.backgroundColor = '#ffe6e6';
+        messageDiv.style.color = '#c00';
+        messageDiv.style.display = 'block';
+        return;
+      }
+      
+      if (newPassword.length < 6) {
+        messageDiv.textContent = '❌ A nova senha deve ter no mínimo 6 caracteres';
+        messageDiv.style.backgroundColor = '#ffe6e6';
+        messageDiv.style.color = '#c00';
+        messageDiv.style.display = 'block';
+        return;
+      }
+      
+      try {
+        const response = await fetch('/admin/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          messageDiv.textContent = '✅ ' + data.message;
+          messageDiv.style.backgroundColor = '#e6ffe6';
+          messageDiv.style.color = '#060';
+          messageDiv.style.display = 'block';
+          
+          // Limpar formulário
+          document.getElementById('passwordForm').reset();
+          
+          // Fechar modal após 2 segundos
+          setTimeout(() => {
+            closePasswordModal();
+          }, 2000);
+        } else {
+          messageDiv.textContent = '❌ ' + data.message;
+          messageDiv.style.backgroundColor = '#ffe6e6';
+          messageDiv.style.color = '#c00';
+          messageDiv.style.display = 'block';
+        }
+      } catch (error) {
+        messageDiv.textContent = '❌ Erro ao alterar senha. Tente novamente.';
+        messageDiv.style.backgroundColor = '#ffe6e6';
+        messageDiv.style.color = '#c00';
+        messageDiv.style.display = 'block';
+      }
+    }
+
+    // Funções de filtro de data
+    function filterDateRange() {
+      const startDate = document.getElementById('filterDateStart').value;
+      const endDate = document.getElementById('filterDateEnd').value;
+      
+      if (!startDate && !endDate) {
+        alert('⚠️ Por favor, selecione pelo menos uma data (início ou fim)');
+        return;
+      }
+      
+      const rows = document.querySelectorAll('.summary-table tbody tr:not([id^="details-"])');
+      let visibleCount = 0;
+      
+      rows.forEach(row => {
+        const dateCell = row.querySelector('td:first-child strong');
+        if (!dateCell) return;
+        
+        const dateText = dateCell.textContent.trim();
+        const [day, month, year] = dateText.split('/');
+        const rowDate = `${year}-${month}-${day}`;
+        
+        let shouldShow = true;
+        
+        if (startDate && rowDate < startDate) {
+          shouldShow = false;
+        }
+        
+        if (endDate && rowDate > endDate) {
+          shouldShow = false;
+        }
+        
+        if (shouldShow) {
+          row.style.display = '';
+          visibleCount++;
+        } else {
+          row.style.display = 'none';
+          // Esconder também a linha de detalhes correspondente
+          const detailsRow = document.getElementById('details-' + rowDate);
+          if (detailsRow) {
+            detailsRow.style.display = 'none';
+          }
+        }
+      });
+      
+      // Atualizar totais do rodapé
+      updateFooterTotals();
+      
+      // Mostrar mensagem
+      const message = visibleCount === 0 
+        ? '❌ Nenhum agendamento encontrado no período selecionado' 
+        : `✅ Mostrando ${visibleCount} dia(s) com agendamentos`;
+      
+      showFilterMessage(message, visibleCount > 0);
+    }
+    
+    function clearDateFilter() {
+      document.getElementById('filterDateStart').value = '';
+      document.getElementById('filterDateEnd').value = '';
+      
+      const rows = document.querySelectorAll('.summary-table tbody tr');
+      rows.forEach(row => {
+        row.style.display = row.id && row.id.startsWith('details-') ? 'none' : '';
+      });
+      
+      updateFooterTotals();
+      showFilterMessage('🔄 Filtro removido - mostrando todos os agendamentos', true);
+    }
+    
+    function updateFooterTotals() {
+      const visibleRows = Array.from(document.querySelectorAll('.summary-table tbody tr:not([id^="details-"])'))
+        .filter(row => row.style.display !== 'none');
+      
+      let totals = {
+        total: 0,
+        confirmed: 0,
+        completed: 0,
+        cancelled: 0,
+        totalValue: 0,
+        completedValue: 0
+      };
+      
+      visibleRows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        totals.total += parseInt(cells[1].textContent.trim()) || 0;
+        
+        const totalValueText = cells[2].textContent.replace('R$', '').replace(',', '.').trim();
+        totals.totalValue += parseFloat(totalValueText) || 0;
+        
+        const completedValueText = cells[3].textContent.replace('R$', '').replace(',', '.').trim();
+        totals.completedValue += parseFloat(completedValueText) || 0;
+        
+        // Extrair números dos badges de status na célula 4
+        const statusCell = cells[4];
+        const badges = statusCell.querySelectorAll('.badge, span[style*="background"]');
+        badges.forEach(badge => {
+          const text = badge.textContent.trim();
+          const num = parseInt(text.match(/\d+/)?.[0]) || 0;
+          if (text.includes('Agendado')) totals.confirmed += num;
+          if (text.includes('Finalizado')) totals.completed += num;
+          if (text.includes('Cancelado')) totals.cancelled += num;
+        });
+      });
+      
+      // Atualizar células do rodapé
+      const footerCells = document.querySelectorAll('.summary-table tfoot td');
+      if (footerCells.length >= 5) {
+        footerCells[1].textContent = totals.total;
+        footerCells[2].textContent = 'R$ ' + totals.totalValue.toFixed(2);
+        footerCells[3].textContent = 'R$ ' + totals.completedValue.toFixed(2);
+        
+        // Atualizar badges de status no rodapé
+        const statusDiv = footerCells[4].querySelector('div');
+        if (statusDiv) {
+          statusDiv.innerHTML = `
+            <span style="background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;">${totals.confirmed} Agendado(s)</span>
+            <span style="background: #007bff; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;">${totals.completed} Finalizado(s)</span>
+            <span style="background: #dc3545; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;">${totals.cancelled} Cancelado(s)</span>
+          `;
+        }
+      }
+    }
+    
+    function showFilterMessage(message, isSuccess) {
+      // Remover mensagem anterior se existir
+      const existingMsg = document.getElementById('filterMessage');
+      if (existingMsg) existingMsg.remove();
+      
+      const msgDiv = document.createElement('div');
+      msgDiv.id = 'filterMessage';
+      msgDiv.textContent = message;
+      msgDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        background: ${isSuccess ? '#28a745' : '#dc3545'};
+        color: white;
+        border-radius: 8px;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+      `;
+      
+      document.body.appendChild(msgDiv);
+      
+      setTimeout(() => {
+        msgDiv.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => msgDiv.remove(), 300);
+      }, 3000);
+    }
+  </script>
+
+  <!-- Modal Gerenciar Profissionais -->
+  <div id="professionalsModal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+      <div class="modal-header">
+        <h2>👤 Gerenciar Profissionais</h2>
+        <span class="close" onclick="closeProfessionalsModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <!-- Formulário -->
+        <div class="form-section">
+          <h3 id="formTitle">➕ Adicionar Profissional</h3>
+          <form id="professionalForm" style="display: grid; gap: 12px; margin-bottom: 20px;">
+            <input type="hidden" id="profId" value="">
+            
+            <div>
+              <label>Nome *</label>
+              <input type="text" id="profName" placeholder="Nome completo" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <label>Telefone</label>
+                <input type="tel" id="profPhone" placeholder="(00) 00000-0000" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+              </div>
+              <div>
+                <label>E-mail</label>
+                <input type="email" id="profEmail" placeholder="email@exemplo.com" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+              </div>
+            </div>
+            
+            <div>
+              <label>Especialidade</label>
+              <input type="text" id="profSpecialty" placeholder="Manicure, Pedicure, etc." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+              <button type="button" onclick="cancelEditProfessional()" id="cancelBtn" style="display: none; background: #6c757d; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
+                Cancelar
+              </button>
+              <button type="submit" style="background: #28a745; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                ✅ Salvar
+              </button>
+            </div>
+          </form>
+        </div>
+        
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;">
+        
+        <!-- Lista de Profissionais -->
+        <div class="list-section">
+          <h3>📋 Profissionais Cadastrados</h3>
+          <div id="professionalsList" style="max-height: 300px; overflow-y: auto;">
+            <p style="text-align: center; color: #666; padding: 20px;">Carregando...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Funções de Gerenciamento de Profissionais
+    function openProfessionalsModal(event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      document.getElementById('professionalsModal').style.display = 'flex';
+      loadProfessionals();
+    }
+
+    function closeProfessionalsModal() {
+      document.getElementById('professionalsModal').style.display = 'none';
+      cancelEditProfessional();
+    }
+
+    function loadProfessionals() {
+      fetch('/admin/api/professionals')
+        .then(res => res.json())
+        .then(data => {
+          const list = document.getElementById('professionalsList');
+          
+          if (!data.professionals || data.professionals.length === 0) {
+            list.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">Nenhum profissional cadastrado.</p>';
+            return;
+          }
+          
+          let html = '<div style="display: grid; gap: 10px;">';
+          
+          data.professionals.forEach(prof => {
+            html += `
+              <div style="padding: 12px; border: 1px solid #ddd; border-radius: 6px; background: #f9f9f9; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <strong style="font-size: 1.05em;">${prof.name}</strong>
+                  ${prof.phone ? `<br><small>📞 ${prof.phone}</small>` : ''}
+                  ${prof.email ? `<br><small>📧 ${prof.email}</small>` : ''}
+                  ${prof.specialty ? `<br><small>🎯 ${prof.specialty}</small>` : ''}
+                </div>
+                <div style="display: flex; gap: 6px;">
+                  <button onclick="editProfessional(${prof.id}, '${prof.name.replace(/'/g, "\\'")}', '${prof.phone || ''}', '${prof.email || ''}', '${prof.specialty || ''}')" 
+                          style="background: #007bff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+                    ✏️ Editar
+                  </button>
+                  <button onclick="deleteProfessional(${prof.id}, '${prof.name.replace(/'/g, "\\'")}')" 
+                          style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+                    🗑️ Excluir
+                  </button>
+                </div>
+              </div>
+            `;
+          });
+          
+          html += '</div>';
+          list.innerHTML = html;
+          
+          // Atualizar os dropdowns na tabela
+          updateProfessionalDropdowns(data.professionals);
+        })
+        .catch(err => {
+          console.error('Erro ao carregar profissionais:', err);
+          document.getElementById('professionalsList').innerHTML = '<p style="text-align: center; color: #dc3545; padding: 20px;">❌ Erro ao carregar profissionais</p>';
+        });
+    }
+
+    function updateProfessionalDropdowns(professionals) {
+      // Para cada agendamento com status 'confirmed', substituir span por select
+      const rows = document.querySelectorAll('tbody tr');
+      
+      rows.forEach(row => {
+        const profCell = row.querySelector('[id^="prof-"]');
+        if (!profCell) return;
+        
+        const appointmentId = profCell.id.replace('prof-', '');
+        const currentProfId = profCell.getAttribute('data-prof-id') || '';
+        const currentProfName = profCell.getAttribute('data-prof-name') || '';
+        
+        // Criar select apenas se o span tem id (significa que é status 'confirmed')
+        // Se não tiver id, é porque já está mostrando o nome fixo
+        if (profCell.id) {
+          let selectHtml = `<select onchange="assignProfessional('${appointmentId}', this.value)" style="font-size: 0.85em; padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; width: 100%;">`;
+          selectHtml += '<option value="">Sem profissional</option>';
+          
+          professionals.forEach(prof => {
+            const selected = prof.id == currentProfId ? 'selected' : '';
+            selectHtml += `<option value="${prof.id}" ${selected}>${prof.name}</option>`;
+          });
+          
+          selectHtml += '</select>';
+          profCell.innerHTML = selectHtml;
+        }
+      });
+    }
+
+    document.getElementById('professionalForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      saveProfessional();
+    });
+
+    function saveProfessional() {
+      const id = document.getElementById('profId').value;
+      const name = document.getElementById('profName').value.trim();
+      const phone = document.getElementById('profPhone').value.trim();
+      const email = document.getElementById('profEmail').value.trim();
+      const specialty = document.getElementById('profSpecialty').value.trim();
+      
+      if (!name) {
+        alert('⚠️ Nome é obrigatório!');
+        return;
+      }
+      
+      const url = id ? `/admin/api/professionals/${id}` : '/admin/api/professionals';
+      const method = id ? 'PUT' : 'POST';
+      
+      fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, phone, email, specialty })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(`✅ Profissional ${id ? 'atualizado' : 'cadastrado'} com sucesso!`);
+          cancelEditProfessional();
+          loadProfessionals();
+        } else {
+          alert('❌ Erro ao salvar profissional');
+        }
+      })
+      .catch(err => {
+        console.error('Erro:', err);
+        alert('❌ Erro ao salvar profissional');
+      });
+    }
+
+    function editProfessional(id, name, phone, email, specialty) {
+      document.getElementById('formTitle').textContent = '✏️ Editar Profissional';
+      document.getElementById('profId').value = id;
+      document.getElementById('profName').value = name;
+      document.getElementById('profPhone').value = phone;
+      document.getElementById('profEmail').value = email;
+      document.getElementById('profSpecialty').value = specialty;
+      document.getElementById('cancelBtn').style.display = 'inline-block';
+      
+      // Scroll para o formulário
+      document.querySelector('#professionalsModal .modal-body').scrollTop = 0;
+    }
+
+    function cancelEditProfessional() {
+      document.getElementById('formTitle').textContent = '➕ Adicionar Profissional';
+      document.getElementById('professionalForm').reset();
+      document.getElementById('profId').value = '';
+      document.getElementById('cancelBtn').style.display = 'none';
+    }
+
+    function deleteProfessional(id, name) {
+      if (!confirm(`⚠️ Tem certeza que deseja excluir "${name}"?\n\nEsta ação não pode ser desfeita.`)) {
+        return;
+      }
+      
+      fetch(`/admin/api/professionals/${id}`, {
+        method: 'DELETE'
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('✅ Profissional excluído com sucesso!');
+          loadProfessionals();
+        } else {
+          alert(`❌ ${data.error || 'Erro ao excluir profissional'}`);
+        }
+      })
+      .catch(err => {
+        console.error('Erro:', err);
+        alert('❌ Erro ao excluir profissional');
+      });
+    }
+
+    function assignProfessional(appointmentId, professionalId) {
+      if (!professionalId) {
+        // Se remover profissional, apenas atualiza sem mudar status
+        fetch(`/admin/api/appointments/${appointmentId}/assign-professional`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ professional_id: null })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            const profCell = document.getElementById(`prof-${appointmentId}`);
+            if (profCell) profCell.setAttribute('data-prof-id', '');
+          }
+        });
+        return;
+      }
+
+      fetch(`/admin/api/appointments/${appointmentId}/assign-professional`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ professional_id: professionalId })
+      })
+      .then(res => {
+        if (!res.ok) {
+          return res.json().then(err => {
+            throw new Error(err.error || 'Erro ao atribuir profissional');
+          });
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (data.success) {
+          console.log('✅ Profissional atribuído com sucesso');
+          // Atualizar data-prof-id no span
+          const profCell = document.getElementById(`prof-${appointmentId}`);
+          if (profCell) {
+            profCell.setAttribute('data-prof-id', professionalId || '');
+          }
+          // Não recarregar mais a página, apenas mostrar mensagem de sucesso
+        } else {
+          alert('❌ ' + (data.error || 'Erro ao atribuir profissional'));
+          loadProfessionals(); // Recarregar para reverter o select
+        }
+      })
+      .catch(err => {
+        console.error('Erro completo:', err);
+        alert('❌ ' + err.message);
+        loadProfessionals();
+      });
+    }
+
+    // Carregar profissionais ao carregar a página (para popular os dropdowns)
+    document.addEventListener('DOMContentLoaded', function() {
+      fetch('/admin/api/professionals')
+        .then(res => res.json())
+        .then(data => {
+          if (data.professionals) {
+            updateProfessionalDropdowns(data.professionals);
+          }
+        })
+        .catch(err => console.error('Erro ao carregar profissionais:', err));
+    });
+
+    // Função para filtrar agendamentos por status
+    let currentFilter = 'all';
+    
+    function filterByStatus(status) {
+      currentFilter = status;
+      const rows = document.querySelectorAll('.appointments-table tbody tr');
+      
+      // Remover classe active de todos os cards
+      document.querySelectorAll('.stat-card').forEach(card => {
+        card.classList.remove('filter-active');
+      });
+      
+      // Adicionar classe active no card clicado
+      if (status === 'all') {
+        document.querySelector('.stat-card:not(.confirmed):not(.initiated):not(.completed):not(.cancelled)').classList.add('filter-active');
+      } else {
+        document.querySelector(`.stat-card.${status}`).classList.add('filter-active');
+      }
+      
+      // Filtrar linhas
+      let visibleCount = 0;
+      rows.forEach(row => {
+        const statusBadge = row.querySelector('.status-badge');
+        if (!statusBadge) return;
+        
+        if (status === 'all') {
+          row.style.display = '';
+          visibleCount++;
+        } else if (statusBadge.classList.contains(status)) {
+          row.style.display = '';
+          visibleCount++;
+        } else {
+          row.style.display = 'none';
+        }
+      });
+      
+      // Atualizar título da seção
+      const statusNames = {
+        'all': 'Todos os Agendamentos',
+        'confirmed': 'Agendamentos - Agendados',
+        'initiated': 'Agendamentos - Iniciados',
+        'completed': 'Agendamentos - Finalizados',
+        'cancelled': 'Agendamentos - Cancelados'
+      };
+      
+      const title = document.querySelector('.appointments-section h2');
+      if (title) {
+        title.textContent = `${statusNames[status]} (${visibleCount})`;
+      }
+    }
+  </script>
+
+  <style>
+    .stat-card {
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .stat-card.filter-active {
+      box-shadow: 0 0 0 3px var(--primary-color);
+      transform: scale(1.02);
+    }
+    
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
+  </style>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= company.name %> - Agendamento</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>💇‍♀️ <%= company.name %></h1>
+      <p class="tagline">Manicure | Pedicure | Cílios</p>
+      <p class="contact">📞 (<%= company.phone.substring(2,4) %>) <%= company.phone.substring(4,5) %>.<%= company.phone.substring(5,9) %>-<%= company.phone.substring(9) %></p>
+    </div>
+
+    <div class="content">
+      <h2>Bem-vinda à <%= company.name %>!</h2>
+      <p>Sistema de agendamento online para seus serviços de beleza.</p>
+      
+      <div class="options">
+        <a href="/client/booking" class="btn btn-primary">👥 Fazer Agendamento</a>
+        <a href="/admin/login" class="btn btn-secondary">🔐 Painel Administrativo</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

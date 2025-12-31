@@ -1,0 +1,249 @@
+/* ============================================
+   MOBILE-FIRST ADMIN ENHANCEMENTS
+   Ajustes específicos para melhor UX em mobile
+   ============================================ */
+
+/* Garantir que body não tenha scroll horizontal */
+body {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Melhorar toque em botões mobile */
+@media (max-width: 768px) {
+  /* Remover tap highlight */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Garantir que buttons do menu funcionem como links */
+  button.nav-item {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border: none;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    text-align: center;
+    cursor: pointer;
+  }
+  
+  /* Garantir que cada item seja clicavel individualmente */
+  .nav-item {
+    position: relative;
+    display: flex !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 12px !important;
+    font-size: 0.9em !important;
+    font-weight: 500 !important;
+    border-radius: 8px !important;
+    min-height: 56px !important;
+    max-height: 56px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+  
+  .sidebar-nav {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  /* Aumentar área de toque */
+  .btn-small {
+    min-height: 36px;
+    min-width: 70px;
+    font-size: 0.85em;
+    padding: 8px 12px;
+  }
+
+  /* Tabela mais legível */
+  .appointments-table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .appointments-table td {
+    border-left: 1px solid var(--border-color);
+  }
+
+  .appointments-table td:first-child {
+    border-left: none;
+  }
+
+  /* Select mais fácil de usar */
+  select {
+    min-height: 40px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 28px;
+  }
+
+  /* Inputs maiores para facilitar toque */
+  input[type="text"],
+  input[type="date"],
+  input[type="time"],
+  input[type="tel"],
+  input[type="email"] {
+    min-height: 42px;
+    font-size: 16px; /* Evita zoom automático no iOS */
+  }
+
+  /* Scroll suave */
+  .admin-main,
+  .modal-content {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* Reduzir motion para performance */
+  * {
+    transition-duration: 0.2s !important;
+  }
+
+  /* Melhorar legibilidade de texto */
+  .admin-main {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Links mais fáceis de clicar */
+  a {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Sidebar menu grid otimizado */
+  .sidebar-nav {
+    grid-auto-rows: minmax(40px, auto);
+  }
+
+  /* Evitar quebra de layout em textos longos */
+  .stat-label,
+  .detail-row strong {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Melhorar contraste para leitura */
+  .appointments-table th {
+    background: #e9ecef;
+    font-weight: 700;
+  }
+
+  /* Status badges mais visíveis */
+  .status-badge {
+    font-size: 0.75em;
+    padding: 5px 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  /* Modais sempre centralizados */
+  .modal {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+  }
+
+  /* Botões de ação empilhados */
+  .actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .actions button,
+  .actions select {
+    width: 100%;
+  }
+
+  /* Tabela com scroll horizontal suave */
+  .table-responsive {
+    position: relative;
+  }
+
+  .table-responsive::after {
+    content: '→ Arraste para ver mais';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.9);
+    padding: 5px 10px;
+    font-size: 0.7em;
+    color: var(--primary-color);
+    border-radius: 4px;
+    pointer-events: none;
+    opacity: 0.7;
+    display: none;
+  }
+
+  .table-responsive.has-scroll::after {
+    display: block;
+  }
+}
+
+/* Ajustes extra small screens */
+@media (max-width: 375px) {
+  .sidebar-nav {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .nav-item {
+    font-size: 0.75em;
+    padding: 8px;
+  }
+
+  .stat-number {
+    font-size: 1.2em !important;
+  }
+
+  .stat-label {
+    font-size: 0.7em !important;
+  }
+
+  .admin-header h1 {
+    font-size: 1em !important;
+  }
+
+  .appointments-table {
+    font-size: 0.65em !important;
+  }
+
+  .modal-content {
+    padding: 10px !important;
+  }
+
+  .btn {
+    font-size: 0.75em !important;
+    padding: 6px 8px !important;
+  }
+}
+
+/* Landscape orientation optimization */
+@media (max-width: 768px) and (orientation: landscape) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+    max-height: 50vh;
+    z-index: 1000;
+  }
+
+  .admin-main {
+    margin-top: 0;
+    padding-top: 12px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

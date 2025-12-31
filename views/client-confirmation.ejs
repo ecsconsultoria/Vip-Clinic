@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agendamento Confirmado - <%= company.name %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container booking-page">
+    <div class="header">
+      <h1><%= company.name %></h1>
+      <p class="tagline">Agendamento Confirmado! ✅</p>
+    </div>
+
+    <div class="confirmation-box" id="confirmationBox">
+      <div class="success-icon">✅</div>
+      <h2>Seu agendamento foi confirmado!</h2>
+      <p>Você receberá uma mensagem de confirmação via WhatsApp.</p>
+      
+      <div class="confirmation-details" id="details"></div>
+
+      <div class="actions">
+        <a href="#" id="whatsappBtn" class="btn btn-primary" target="_blank" style="display:none;">
+          💬 Abrir Confirmação no WhatsApp
+        </a>
+        <a href="#" id="salonBtn" class="btn btn-secondary" target="_blank" style="display:none;">
+          📱 Falar com o Salão
+        </a>
+        <a href="/client/booking" class="btn btn-outline">
+          📅 Fazer Novo Agendamento
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Obter ID do agendamento da URL
+    const appointmentId = '<%= appointmentId %>';
+    
+    // Buscar detalhes do agendamento
+    fetch(`/api/booking/${appointmentId}`)
+      .then(res => res.json())
+      .then(data => {
+        // Formatar data sem problemas de fuso horário
+        const [year, month, day] = data.appointment_date.split('-');
+        const formattedDate = `${day}/${month}/${year}`;
+        
+        const detailsHtml = `
+          <div class="detail">
+            <strong>📅 Data:</strong> ${formattedDate}
+          </div>
+          <div class="detail">
+            <strong>🕐 Hora:</strong> ${data.appointment_time}
+          </div>
+          <div class="detail">
+            <strong>💅 Serviço:</strong> ${formatServiceName(data.service)}
+          </div>
+          <div class="detail">
+            <strong>💰 Valor:</strong> R$ ${(data.service_price || 0).toFixed(2)}
+          </div>
+          <div class="detail">
+            <strong>👤 Nome:</strong> ${data.client_name}
+          </div>
+          <div class="detail">
+            <strong>📱 Telefone:</strong> ${data.client_phone}
+          </div>
+        `;
+        
+        document.getElementById('details').innerHTML = detailsHtml;
+        
+        // Gerar link WhatsApp com mensagem pré-formatada
+        const whatsappLink = generateWhatsAppLink(data);
+        const whatsappBtn = document.getElementById('whatsappBtn');
+        whatsappBtn.href = whatsappLink;
+        whatsappBtn.style.display = 'inline-block';
+        
+        // Gerar link para falar com o salão usando a mesma mensagem
+        const salonLink = generateSalonWhatsAppLink(data);
+        const salonBtn = document.getElementById('salonBtn');
+        salonBtn.href = salonLink;
+        salonBtn.style.display = 'inline-block';
+      })
+      .catch(err => {
+        console.error('Erro ao carregar detalhes:', err);
+        document.getElementById('details').innerHTML = '<p>Agendamento realizado com sucesso!</p>';
+      });
+
+    function formatServiceName(service) {
+      const serviceNames = {
+        'manicure': 'Manicure',
+        'pedicure': 'Pedicure',
+        'cilios': 'Cílios',
+        'combo_mani_pedi': 'Manicure + Pedicure',
+        'combo_completo': 'Manicure + Pedicure + Cílios'
+      };
+      return serviceNames[service] || service;
+    }
+    
+    function generateWhatsAppLink(data) {
+      const serviceName = formatServiceName(data.service);
+      const [year, month, day] = data.appointment_date.split('-');
+      const formattedDate = `${day}/${month}/${year}`;
+      
+      const message = `✅ *MEU AGENDAMENTO*
+
+Olá! Gostaria de confirmar meu agendamento:
+
+💅 *Serviço:* ${serviceName}
+📅 *Data:* ${formattedDate}
+🕐 *Horário:* ${data.appointment_time}
+👤 *Nome:* ${data.client_name}
+💰 *Valor:* R$ ${(data.service_price || 0).toFixed(2)}
+
+🆔 Código: ${data.id}`;
+      
+      const clientPhone = data.client_phone.replace(/\D/g, '');
+      return `https://wa.me/55${clientPhone}?text=${encodeURIComponent(message)}`;
+    }
+    
+    function generateSalonWhatsAppLink(data) {
+      const serviceName = formatServiceName(data.service);
+      const [year, month, day] = data.appointment_date.split('-');
+      const formattedDate = `${day}/${month}/${year}`;
+      
+      const message = `✅ *MEU AGENDAMENTO*
+
+Olá! Gostaria de confirmar meu agendamento:
+
+💅 *Serviço:* ${serviceName}
+📅 *Data:* ${formattedDate}
+🕐 *Horário:* ${data.appointment_time}
+👤 *Nome:* ${data.client_name}
+💰 *Valor:* R$ ${(data.service_price || 0).toFixed(2)}
+
+🆔 Código: ${data.id}`;
+      
+      const salonPhone = '5511961672313'; // Telefone do salão
+      return `https://wa.me/${salonPhone}?text=${encodeURIComponent(message)}`;
+    }
+  </script>
+</body>
+</html>
