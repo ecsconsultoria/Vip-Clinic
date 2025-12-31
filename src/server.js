@@ -109,7 +109,7 @@ app.use((err, req, res, next) => {
 
 // Start Server
 const server = app.listen(PORT, () => {
-  const companyName = process.env.COMPANY_NAME || 'Vip & Bella';
+  const companyName = process.env.COMPANY_NAME || 'Vip Clinic';
   console.log(`🌟 ${companyName} Booking System rodando em http://localhost:${PORT}`);
   console.log(`📱 Acesse a página de admin: http://localhost:${PORT}/admin`);
 });

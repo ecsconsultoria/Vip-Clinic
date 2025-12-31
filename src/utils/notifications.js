@@ -7,11 +7,11 @@ const { getDatabase } = require('../database');
 
 // Configurações padrão (fallback se banco de dados não estiver disponível)
 let SALON_CONFIG = {
-  name: process.env.COMPANY_NAME || 'Vip & Bella',
+  name: process.env.COMPANY_NAME || 'Vip Clinic',
   phone: process.env.COMPANY_PHONE || '5511961672313',
-  email: process.env.COMPANY_EMAIL || 'contato@vipebella.com.br',
+  email: process.env.COMPANY_EMAIL || 'contato@vipclinic.com.br',
   address: process.env.COMPANY_ADDRESS || 'Rua Exemplo, 123 - São Paulo, SP',
-  instagram: process.env.COMPANY_INSTAGRAM || '@vipebella'
+  instagram: process.env.COMPANY_INSTAGRAM || '@vipclinic'
 };
 
 /**

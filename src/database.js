@@ -209,10 +209,10 @@ const createTables = () => {
     db.run(`
       CREATE TABLE IF NOT EXISTS company_settings (
         id INTEGER PRIMARY KEY CHECK (id = 1),
-        name TEXT NOT NULL DEFAULT 'Vip & Bella',
-        phone TEXT NOT NULL DEFAULT '5511961672313',
-        email TEXT DEFAULT 'contato@vipebella.com.br',
-        instagram TEXT DEFAULT '@vipebella',
+        name TEXT NOT NULL DEFAULT 'Vip Clinic',
+        phone TEXT DEFAULT '5511961672313',
+        email TEXT DEFAULT 'contato@vipclinic.com.br',
+        instagram TEXT DEFAULT '@vipclinic',
         tagline TEXT DEFAULT 'Agende seu serviço',
         logo_url TEXT,
         primary_color TEXT DEFAULT '#e91e63',
@@ -229,10 +229,10 @@ const createTables = () => {
             db.run(`INSERT INTO company_settings (id, name, phone, email, instagram, tagline) 
                     VALUES (1, ?, ?, ?, ?, ?)`,
               [
-                process.env.COMPANY_NAME || 'Vip & Bella',
+                process.env.COMPANY_NAME || 'Vip Clinic',
                 process.env.COMPANY_PHONE || '5511961672313',
-                process.env.COMPANY_EMAIL || 'contato@vipebella.com.br',
-                process.env.COMPANY_INSTAGRAM || '@vipebella',
+                process.env.COMPANY_EMAIL || 'contato@vipclinic.com.br',
+                process.env.COMPANY_INSTAGRAM || '@vipclinic',
                 process.env.COMPANY_TAGLINE || 'Agendamento'
               ],
               (err) => {

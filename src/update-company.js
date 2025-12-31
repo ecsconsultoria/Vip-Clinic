@@ -6,10 +6,10 @@ require('dotenv').config();
 const dbPath = path.join(__dirname, '../data/appointments.db');
 const db = new sqlite3.Database(dbPath);
 
-const companyName = process.env.COMPANY_NAME || 'Vip & Bella';
+const companyName = process.env.COMPANY_NAME || 'Vip Clinic';
 const companyPhone = process.env.COMPANY_PHONE || '5511961672313';
-const companyEmail = process.env.COMPANY_EMAIL || 'contato@vipebella.com.br';
-const companyInstagram = process.env.COMPANY_INSTAGRAM || '@vipebella';
+const companyEmail = process.env.COMPANY_EMAIL || 'contato@vipclinic.com.br';
+const companyInstagram = process.env.COMPANY_INSTAGRAM || '@vipclinic';
 const companyTagline = process.env.COMPANY_TAGLINE || 'Agendamento';
 
 db.run(

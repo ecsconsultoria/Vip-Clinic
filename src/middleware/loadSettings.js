@@ -32,10 +32,10 @@ const loadCompanySettings = (req, res, next) => {
  */
 function getDefaultSettings() {
   return {
-    name: process.env.COMPANY_NAME || 'Vip & Bella',
+    name: process.env.COMPANY_NAME || 'Vip Clinic',
     phone: process.env.COMPANY_PHONE || '5511961672313',
-    email: process.env.COMPANY_EMAIL || 'contato@vipebella.com.br',
-    instagram: process.env.COMPANY_INSTAGRAM || '@vipebella',
+    email: process.env.COMPANY_EMAIL || 'contato@vipclinic.com.br',
+    instagram: process.env.COMPANY_INSTAGRAM || '@vipclinic',
     tagline: process.env.COMPANY_TAGLINE || 'Agende seu serviço',
     logo_url: process.env.COMPANY_LOGO_URL || null,
     primary_color: process.env.COMPANY_PRIMARY_COLOR || '#e91e63'
